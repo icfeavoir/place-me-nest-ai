@@ -1,8 +1,18 @@
-import { Plan } from '../models/Plan';
-import { ConstraintSeatsType, GridSizeType, SeatType } from './types';
+import {
+  ConstraintSeatsType,
+  GridSizeType,
+  GroupMemberType,
+  SeatType,
+} from './types';
+
+export type PlanResponseDTO = {
+  placement: GroupMemberType[];
+  gridSize: GridSizeType;
+  score: number;
+};
 
 export type GenerateDTO = {
-  bestPlan: Plan;
+  bestPlan: PlanResponseDTO;
   bestScore: number;
   averageScore: number;
   time: number;

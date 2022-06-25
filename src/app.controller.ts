@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { Group } from './models/Group';
 import { Plan } from './models/Plan';
 import { GAService } from './services/ga.service';
@@ -59,7 +59,11 @@ export class AppController {
         0,
       ),
       time: timeInSeconds,
-      bestPlan,
+      bestPlan: {
+        gridSize: bestPlan.gridSize,
+        placement: bestPlan.placement,
+        score: bestPlan.score,
+      },
     };
   }
 }

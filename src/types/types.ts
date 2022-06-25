@@ -1,6 +1,3 @@
-import { Group } from 'src/models/Group';
-import { Plan } from 'src/models/Plan';
-
 export type GridSizeType = {
   width: number;
   height: number;
@@ -12,9 +9,8 @@ export type GroupMemberType = {
   groupNb: number; // nombre de personnes dans le groupe
   nb: number; // numero dans le groupe
   constraint: ConstraintSeatsType | null; // contrainte spécifique de ce membre
+  seat?: SeatType;
 };
-
-export type GridType = Array<Array<GroupMemberType | null>>;
 
 export type SeatType = {
   line: number;

@@ -1,14 +1,13 @@
 import {
   SeatType,
   GridSizeType,
-  GridType,
   GroupMemberType,
   ConstraintSeatsType,
 } from '../types/types';
 import { Group } from './Group';
 
 export class Plan {
-  private _grid: GridType;
+  private _placement: GroupMemberType[];
   private _score: number;
 
   private _gridSize: GridSizeType;
@@ -27,10 +26,8 @@ export class Plan {
     this._forbiddenSeats = forbiddenSeats;
     this._constraintSeats = constraintSeats;
 
-    this._grid = [];
+    this._placement = [];
     this._score = 0;
-
-    this._initGrid();
 
     this.calculateScore();
   }
@@ -43,8 +40,12 @@ export class Plan {
     return this._gridSize.height;
   }
 
-  get grid(): GridType {
-    return this._grid;
+  get gridSize(): GridSizeType {
+    return this._gridSize;
+  }
+
+  get placement(): GroupMemberType[] {
+    return this._placement;
   }
 
   get groups(): Group[] {
@@ -60,7 +61,10 @@ export class Plan {
   }
 
   getGroupMemberAt(seat: SeatType): GroupMemberType | null {
-    return this._grid?.[seat.line]?.[seat.col];
+    return this._placement.find(
+      ({ seat: groupMemberSeat }) =>
+        groupMemberSeat.line === seat.line && groupMemberSeat.col === seat.col,
+    );
   }
 
   /**
@@ -68,17 +72,9 @@ export class Plan {
    * @param group
    */
   getGroupSeats(group: Group): SeatType[] {
-    const groupSeats: SeatType[] = [];
-
-    this._grid.forEach((line, lineIndex) => {
-      line.forEach((groupMember, colIndex) => {
-        if (groupMember?.groupName === group.name) {
-          groupSeats.push({ line: lineIndex, col: colIndex });
-        }
-      });
-    });
-
-    return groupSeats;
+    return this._placement
+      .filter(({ groupName }) => groupName === group.name)
+      .map(({ seat }) => seat);
   }
 
   isSeatAvailable(seat: SeatType): boolean {
@@ -107,7 +103,7 @@ export class Plan {
       );
     }
 
-    this._grid[seat.line][seat.col] = groupMember;
+    this._placement.push({ ...groupMember, seat });
   }
 
   /**
@@ -115,7 +111,14 @@ export class Plan {
    * @param seat
    */
   emptySeat(seat: SeatType) {
-    this._grid[seat.line][seat.col] = null;
+    const index = this._placement.findIndex(
+      ({ seat: groupMemberSeat }) =>
+        groupMemberSeat.line === seat.line && groupMemberSeat.col === seat.col,
+    );
+
+    if (index >= 0) {
+      this._placement.splice(index, 1);
+    }
   }
 
   /**
@@ -133,17 +136,6 @@ export class Plan {
     seats.forEach((seat, i) =>
       this.setGroupMemberAt(seat, group.getMemberNumber(i)),
     );
-  }
-
-  /**
-   * Initialize un plan vide
-   */
-  private _initGrid() {
-    const lines = Array.from({ length: this._gridSize.width }, () => null);
-    // desctructuring array to prevent copy obj
-    this._grid = Array.from({ length: this._gridSize.height }, () => [
-      ...lines,
-    ]);
   }
 
   /**
@@ -247,64 +239,54 @@ export class Plan {
     const TOP_BOTTOM = +7;
     const MALUS = -100;
 
-    this._grid.forEach((line, lineIndex) => {
-      line.forEach((groupMember, colIndex) => {
-        if (groupMember) {
-          const groupMemberRight = this.getGroupMemberAt({
-            line: lineIndex,
-            col: colIndex + 1,
-          });
-          const groupMemberLeft = this.getGroupMemberAt({
-            line: lineIndex,
-            col: colIndex - 1,
-          });
-          const groupMemberTop = this.getGroupMemberAt({
-            line: lineIndex + 1,
-            col: colIndex,
-          });
-          const groupMemberBottom = this.getGroupMemberAt({
-            line: lineIndex - 1,
-            col: colIndex,
-          });
+    this._placement.forEach((groupMember) => {
+      const line = groupMember.seat.line ?? null;
+      const col = groupMember.seat.col ?? null;
 
-          let isAlone = true;
+      if (line && col) {
+        const groupMemberRight = this.getGroupMemberAt({ line, col: col + 1 });
+        const groupMemberLeft = this.getGroupMemberAt({ line, col: col - 1 });
+        const groupMemberTop = this.getGroupMemberAt({ line: line + 1, col });
+        const groupMemberBot = this.getGroupMemberAt({ line: line - 1, col });
 
-          if (groupMemberRight?.groupName === groupMember.groupName) {
-            currentScore += LEFT_RIGHT;
-            isAlone = false;
-          }
+        let isAlone = true;
 
-          if (groupMemberLeft?.groupName === groupMember.groupName) {
-            currentScore += LEFT_RIGHT;
-            isAlone = false;
-          }
+        if (groupMemberRight?.groupName === groupMember.groupName) {
+          currentScore += LEFT_RIGHT;
+          isAlone = false;
+        }
 
-          if (groupMemberTop?.groupName === groupMember.groupName) {
-            currentScore += TOP_BOTTOM;
-          }
+        if (groupMemberLeft?.groupName === groupMember.groupName) {
+          currentScore += LEFT_RIGHT;
+          isAlone = false;
+        }
 
-          if (groupMemberBottom?.groupName === groupMember.groupName) {
-            currentScore += TOP_BOTTOM;
-          }
+        if (groupMemberTop?.groupName === groupMember.groupName) {
+          currentScore += TOP_BOTTOM;
+        }
 
-          // Si groupMember seul alors qu'il ne devrait pas => MALUS
-          if (isAlone && groupMember.groupNb > 1) {
+        if (groupMemberBot?.groupName === groupMember.groupName) {
+          currentScore += TOP_BOTTOM;
+        }
+
+        // Si groupMember seul alors qu'il ne devrait pas => MALUS
+        if (isAlone && groupMember.groupNb > 1) {
+          currentScore += MALUS;
+        }
+
+        // Si groupMember a une contrainte non respectée => MALUS
+        if (groupMember?.constraint) {
+          const seats = groupMember?.constraint?.seats;
+          if (
+            !seats.find(
+              ({ line: constraintLine, col: constraintCol }) =>
+                line === constraintLine && col === constraintCol,
+            )
+          ) {
             currentScore += MALUS;
           }
-
-          // Si groupMember a une contrainte non respectée => MALUS
-          if (groupMember?.constraint) {
-            const seats = groupMember?.constraint?.seats;
-            if (
-              !seats.find(
-                ({ line, col }) => line === lineIndex && col === colIndex,
-              )
-            ) {
-              currentScore += MALUS;
-            }
-          }
         }
-      });
+      }
     });
 
     this._score = currentScore;
@@ -317,9 +299,7 @@ export class Plan {
       this._forbiddenSeats,
       this._constraintSeats,
     );
-    plan._grid = this._grid.map((line) =>
-      line.map((groupMember) => groupMember),
-    );
+    plan._placement = [...this._placement];
     plan.calculateScore();
 
     return plan;
@@ -430,29 +410,5 @@ export class Plan {
     childPlan.calculateScore();
 
     return childPlan;
-  }
-
-  /**
-   * Permet d'afficher au format texte la grille d'un plan
-   * @returns
-   */
-  toString(): string {
-    let text = '';
-    this.grid.forEach((line, lineIndex) => {
-      line.forEach((groupMember, colIndex) => {
-        if (groupMember) {
-          let name = groupMember.groupName;
-          while (name.length < 6) {
-            name += ' ';
-          }
-          text += ` ${name} |`;
-        } else {
-          text += '        |';
-        }
-      });
-      text += '\n';
-    });
-
-    return `SCORE ${this.score}\n${text}`;
   }
 }
