@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Group } from 'src/models/Group';
-import { ConstraintSeatsType, GridSizeType, SeatType } from 'src/types/types';
+import {
+  ConstraintSeatsType,
+  GridSizeType,
+  ScoreType,
+  SeatType,
+} from 'src/types/types';
 import { Plan } from '../models/Plan';
 
 @Injectable()
@@ -50,11 +55,12 @@ export class GAService {
     groups: Group[],
     nbPlans: number,
     forbiddenSeats: SeatType[],
-    constraintSeats: ConstraintSeatsType[],
+    constraints: ConstraintSeatsType[],
+    scores: ScoreType,
   ): Plan[] {
     const plans = Array.from(
       { length: nbPlans },
-      () => new Plan(gridSize, groups, forbiddenSeats, constraintSeats),
+      () => new Plan(gridSize, groups, forbiddenSeats, constraints, scores),
     );
 
     return plans.map((plan) => {
@@ -68,24 +74,26 @@ export class GAService {
    */
   reproduce(
     plans: Plan[],
-    SURVIVOR_PERCENT: number,
-    NB_REPRODUCTIONS: number,
-    PROBA_MUTATION: number,
+    survivorProportion: number,
+    nbReproductions: number,
+    probMutation: number,
   ) {
     // on "tue" une partie de la population
     const bestPlans = this.sortPlans(plans);
-    const survivors = this.keepOnly(bestPlans, plans.length * SURVIVOR_PERCENT);
+    const survivors = this.keepOnly(
+      bestPlans,
+      (plans.length * survivorProportion) / 100,
+    );
 
     // le reste peut se reproduire
     const newPlans = [];
-    for (let i = 0; i < NB_REPRODUCTIONS; i++) {
+    for (let i = 0; i < nbReproductions; i++) {
       const father = this.rouletteWheelSelection(survivors)?.clone();
-      const mother = this.rouletteWheelSelection(survivors)?.clone();
 
-      if (father && mother) {
+      if (father) {
         const child = Plan.createFromOneParent(father);
 
-        const willMutate = Math.random() < PROBA_MUTATION;
+        const willMutate = Math.random() < probMutation / 100;
         if (willMutate) {
           // on mute et on ajoute à la population => 2 nouveaux plans
           const mutatedChild = this.mutate(child);

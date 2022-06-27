@@ -3,6 +3,7 @@ import {
   GridSizeType,
   GroupMemberType,
   ConstraintSeatsType,
+  ScoreType,
 } from '../types/types';
 import { Group } from './Group';
 
@@ -13,18 +14,21 @@ export class Plan {
   private _gridSize: GridSizeType;
   private _groups: Group[];
   private _forbiddenSeats: SeatType[];
-  private _constraintSeats: ConstraintSeatsType[];
+  private _constraints: ConstraintSeatsType[];
+  private _scorePoints: ScoreType;
 
   constructor(
     gridSize: GridSizeType,
     groups: Group[],
     forbiddenSeats: SeatType[],
-    constraintSeats: ConstraintSeatsType[],
+    constraints: ConstraintSeatsType[],
+    scoresPoints: ScoreType,
   ) {
     this._groups = groups;
     this._gridSize = gridSize;
     this._forbiddenSeats = forbiddenSeats;
-    this._constraintSeats = constraintSeats;
+    this._constraints = constraints;
+    this._scorePoints = scoresPoints;
 
     this._placement = [];
     this._score = 0;
@@ -153,21 +157,6 @@ export class Plan {
   }
 
   /**
-   * Retourne la contrainte d'un siège (ou null)
-   * @param seat
-   * @returns
-   */
-  getConstraintSeatAt(seat: SeatType): ConstraintSeatsType | null {
-    return (
-      this._constraintSeats.find(({ seats }) => {
-        return seats.some(({ line, col }) => {
-          return line === seat.line && col === seat.col;
-        });
-      }) ?? null
-    );
-  }
-
-  /**
    * Place aléatoirement les groupes
    */
   public generateRandomPlan() {
@@ -235,9 +224,9 @@ export class Plan {
   calculateScore() {
     let currentScore = 0;
 
-    const LEFT_RIGHT = +10;
-    const TOP_BOTTOM = +7;
-    const MALUS = -100;
+    const LEFT_RIGHT = this._scorePoints.leftRightScore ?? +10;
+    const TOP_BOTTOM = this._scorePoints.topBottomScore ?? +7;
+    const MALUS = this._scorePoints.malusScore ?? -100;
 
     this._placement.forEach((groupMember) => {
       const line = groupMember.seat.line ?? null;
@@ -275,10 +264,12 @@ export class Plan {
         }
 
         // Si groupMember a une contrainte non respectée => MALUS
-        if (groupMember?.constraint) {
-          const seats = groupMember?.constraint?.seats;
+        if (groupMember?.constraintName) {
+          const seats = this._constraints.find(
+            (c) => c.name === groupMember.constraintName,
+          )?.seats;
           if (
-            !seats.find(
+            !seats?.find(
               ({ line: constraintLine, col: constraintCol }) =>
                 line === constraintLine && col === constraintCol,
             )
@@ -297,7 +288,8 @@ export class Plan {
       this._gridSize,
       this._groups,
       this._forbiddenSeats,
-      this._constraintSeats,
+      this._constraints,
+      this._scorePoints,
     );
     plan._placement = [...this._placement];
     plan.calculateScore();
@@ -324,55 +316,6 @@ export class Plan {
   }
 
   /**
-   * Création d'un plan à partir de 2 parents
-   * @deprecated
-   * @param father
-   * @param mother
-   * @returns
-   */
-  static createFromParents(father: Plan, mother: Plan): Plan {
-    const gridSize = {
-      width: father.width,
-      height: father.height,
-    };
-    const childPlan = new Plan(
-      gridSize,
-      father._groups,
-      father._forbiddenSeats,
-      father._constraintSeats,
-    );
-
-    // On choisit qui va commencer (père ou mère)
-    let isFatherTurn = Math.random() < 0.5;
-
-    const groups = [...father._groups];
-    let remainingGroups = [...groups];
-
-    groups.forEach((group) => {
-      // alterne père / mère
-      const usedPlan: Plan = isFatherTurn ? father : mother;
-      const seats: SeatType[] = usedPlan.getGroupSeats(group);
-
-      // check if all seats are available
-      const canPlaceGroup = !seats.some((seat) => childPlan.isSeatTaken(seat));
-
-      if (canPlaceGroup) {
-        childPlan.setGroupSeats(group, seats);
-        remainingGroups = remainingGroups.filter((g) => g !== group);
-        // change parent turn if success
-        isFatherTurn = !isFatherTurn;
-      }
-    });
-
-    // put groups that have not been placed
-    childPlan.fillMissingGroups(remainingGroups);
-
-    childPlan.calculateScore();
-
-    return childPlan;
-  }
-
-  /**
    * Création d'un plan à partir d'un seul parent
    * @param father
    * @returns
@@ -386,7 +329,8 @@ export class Plan {
       gridSize,
       father._groups,
       father._forbiddenSeats,
-      father._constraintSeats,
+      father._constraints,
+      father._scorePoints,
     );
 
     const groups = [...father._groups];

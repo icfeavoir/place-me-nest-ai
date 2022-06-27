@@ -16,15 +16,16 @@ export class AppController {
       groups,
       forbiddenSeats,
       constraints,
+      scores,
       nbPlans,
       nbGenerations,
       nbReproductions,
       probaMutation,
       survivorProportion,
     }: GenerateRequestDto,
-  ): GenerateDTO | null {
+  ): GenerateDTO {
     const generatedGroups: Group[] = groups.map(
-      (group) => new Group(group?.name, group?.nb),
+      (group) => new Group(group?.name, group?.nb, group?.constraint),
     );
 
     let plans: Plan[] = this.gaService.initializePopulation(
@@ -33,20 +34,27 @@ export class AppController {
       nbPlans,
       forbiddenSeats,
       constraints,
+      scores,
     );
 
     // mesure time
     const begin = new Date();
     let bestPlan = plans[0];
+    let error = null;
 
-    for (let i = 0; i < nbGenerations; i++) {
-      plans = this.gaService.reproduce(
-        plans,
-        survivorProportion,
-        nbReproductions,
-        probaMutation,
-      );
-      bestPlan = plans[0];
+    try {
+      for (let i = 0; i < nbGenerations; i++) {
+        console.log('GENERATION ', i);
+        plans = this.gaService.reproduce(
+          plans,
+          survivorProportion,
+          nbReproductions,
+          probaMutation,
+        );
+        bestPlan = plans[0];
+      }
+    } catch (e) {
+      error = e.message;
     }
 
     const end = new Date();
@@ -62,8 +70,10 @@ export class AppController {
       bestPlan: {
         gridSize: bestPlan.gridSize,
         placement: bestPlan.placement,
+        forbiddenSeats: bestPlan.forbiddenSeats,
         score: bestPlan.score,
       },
+      error,
     };
   }
 }

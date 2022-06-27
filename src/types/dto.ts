@@ -1,13 +1,16 @@
 import {
   ConstraintSeatsType,
   GridSizeType,
+  GroupConstraintType,
   GroupMemberType,
+  ScoreType,
   SeatType,
 } from './types';
 
 export type PlanResponseDTO = {
   placement: GroupMemberType[];
   gridSize: GridSizeType;
+  forbiddenSeats: SeatType[];
   score: number;
 };
 
@@ -16,19 +19,21 @@ export type GenerateDTO = {
   bestScore: number;
   averageScore: number;
   time: number;
+  error: string | null;
 };
 
 export type GroupDto = {
   name: string;
   nb: number;
-  // groupConstraint: string;
+  constraint: GroupConstraintType;
 };
 
 export type GenerateRequestDto = {
   groups: GroupDto[];
-  constraints: ConstraintSeatsType[];
   gridSize: GridSizeType;
   forbiddenSeats: SeatType[];
+  constraints: ConstraintSeatsType[];
+  scores: ScoreType;
   nbPlans: number;
   survivorProportion: number;
   nbReproductions: number;

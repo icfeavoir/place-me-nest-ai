@@ -5,18 +5,18 @@ export class Group {
   private _name: string;
   private _nb: number;
   private _color: string;
-  private _groupConstraint: GroupConstraintType | null;
+  private _constraint: GroupConstraintType | null;
   private _members: GroupMemberType[] = [];
 
   constructor(
     name: string,
     nb: number,
-    groupConstraint: GroupConstraintType | null = null,
+    constraint: GroupConstraintType | null = null,
   ) {
     this._name = name;
     this._nb = nb;
     this._color = this.getRandomColor();
-    this._groupConstraint = groupConstraint;
+    this._constraint = constraint;
 
     this.generateMembers();
   }
@@ -34,7 +34,7 @@ export class Group {
   }
 
   get constraint(): GroupConstraintType | null {
-    return this._groupConstraint;
+    return this._constraint;
   }
 
   get members(): GroupMemberType[] {
@@ -67,15 +67,14 @@ export class Group {
   private generateMembers(): void {
     for (let i = 0; i < this._nb; i++) {
       // Si x personnes ont la contrainte, on donne aux x premiers
-      const memberHasConstraint =
-        this._groupConstraint && this._groupConstraint?.nb > i;
+      const memberHasConstraint = this._constraint && this._constraint?.nb > i;
       const member: GroupMemberType = {
         groupName: this._name,
         groupColor: this._color,
         groupNb: this._nb,
         nb: i,
-        constraint: memberHasConstraint
-          ? this._groupConstraint?.constraint ?? null
+        constraintName: memberHasConstraint
+          ? this._constraint.constraintName
           : null,
       };
 
