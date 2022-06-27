@@ -82,7 +82,7 @@ export class GAService {
     const bestPlans = this.sortPlans(plans);
     const survivors = this.keepOnly(
       bestPlans,
-      (plans.length * survivorProportion) / 100,
+      plans.length * (survivorProportion / 100),
     );
 
     // le reste peut se reproduire
@@ -132,8 +132,8 @@ export class GAService {
 
     // Si les 2 sièges sont le même, on annule la mutation
     if (
-      group1Seat.col === group2Seat.col &&
-      group1Seat.line === group2Seat.line
+      group1Seat?.col === group2Seat?.col &&
+      group1Seat?.line === group2Seat?.line
     )
       return null;
 

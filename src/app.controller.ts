@@ -1,8 +1,9 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { GenerateRequestDto } from './dto/GenerateRequestDto';
 import { Group } from './models/Group';
 import { Plan } from './models/Plan';
 import { GAService } from './services/ga.service';
-import { GenerateDTO, GenerateRequestDto } from './types/dto';
+import { GenerateDTO } from './types/dto';
 
 @Controller('/generate')
 export class AppController {
@@ -61,7 +62,7 @@ export class AppController {
     const timeInSeconds = (end.getTime() - begin.getTime()) / 1000;
 
     return {
-      bestScore: bestPlan.score,
+      bestScore: bestPlan?.score,
       averageScore: plans.reduce(
         (avg, value, _, { length }) => avg + value?.score / length,
         0,
