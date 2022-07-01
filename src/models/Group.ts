@@ -1,4 +1,3 @@
-import { COLORS } from '../types/colors';
 import { GroupConstraintType, GroupMemberType } from '../types/types';
 
 export class Group {
@@ -11,11 +10,12 @@ export class Group {
   constructor(
     name: string,
     nb: number,
+    color: string,
     constraint: GroupConstraintType | null = null,
   ) {
     this._name = name;
     this._nb = nb;
-    this._color = this.getRandomColor();
+    this._color = color;
     this._constraint = constraint;
 
     this.generateMembers();
@@ -48,15 +48,6 @@ export class Group {
    */
   getMemberNumber(i: number): GroupMemberType | null {
     return this._members[i] ?? null;
-  }
-
-  /**
-   * Définit une couleur pour le groupe
-   * @returns
-   */
-  private getRandomColor(): string {
-    const randomIndex = Math.floor(Math.random() * COLORS.length);
-    return COLORS[randomIndex];
   }
 
   /**

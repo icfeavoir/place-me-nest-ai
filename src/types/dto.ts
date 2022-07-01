@@ -25,6 +25,7 @@ export type GenerateDTO = {
 export type GroupDto = {
   name: string;
   nb: number;
+  color: string;
   constraint: GroupConstraintType;
 };
 
