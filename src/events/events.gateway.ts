@@ -1,5 +1,6 @@
 import {
   MessageBody,
+  // eslint-disable-next-line
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -15,8 +16,6 @@ import { GenerateRequestDto } from 'src/types/dto';
 })
 export class EventsGateway {
   constructor(private readonly gaService: GAService) {}
-
-  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   @WebSocketServer()
   server: Server;
@@ -37,12 +36,14 @@ export class EventsGateway {
       survivorProportion,
     }: GenerateRequestDto,
   ) {
+    // Mise en forme des données
     const generatedGroups: Group[] = groups.map(
       (group) =>
         new Group(group?.name, group?.nb, group?.color, group?.constraint),
     );
 
-    let plans: Plan[] = this.gaService.initializePopulation(
+    // Génération 0
+    const plans: Plan[] = this.gaService.initializePopulation(
       gridSize,
       generatedGroups,
       nbPlans,
@@ -51,72 +52,17 @@ export class EventsGateway {
       scores,
     );
 
-    // mesure time
-    const begin = new Date();
-    let bestPlan = plans[0];
-    let error = null;
-    // Mesure convergence
-    const genOfBestPlan = { generation: 0, score: 0 };
-
-    try {
-      const genArray = Array.from({ length: nbGenerations }, (v, i) => i);
-      for (const i of genArray) {
-        plans = this.gaService.reproduce(
-          plans,
-          survivorProportion,
-          nbReproductions,
-          probaMutation,
-        );
-        bestPlan = plans[0];
-
-        if (bestPlan.score > genOfBestPlan.score) {
-          genOfBestPlan.generation = i;
-          genOfBestPlan.score = bestPlan.score;
-        }
-
-        this.server.emit('loading', { current: i, total: nbGenerations });
-
-        // emit toutes les 10 gen
-        if (i % 10 === 0) {
-          const currentGen = {
-            genOfBestPlan,
-            bestPlan: {
-              gridSize: bestPlan.gridSize,
-              placement: bestPlan.placement,
-              forbiddenSeats: bestPlan.forbiddenSeats,
-              score: bestPlan.score,
-            },
-          };
-          this.server.emit('current-gen', currentGen);
-        }
-
-        // Sleep 0 to let time to send socket
-        await this.sleep(0);
-      }
-    } catch (e) {
-      console.error(e);
-      error = e.message;
-    }
-
-    const end = new Date();
-    const timeInSeconds = (end.getTime() - begin.getTime()) / 1000;
-
-    const result = {
-      genOfBestPlan,
-      averageScore: plans.reduce(
-        (avg, value, _, { length }) => avg + value?.score / length,
-        0,
-      ),
-      time: timeInSeconds,
-      bestPlan: {
-        gridSize: bestPlan.gridSize,
-        placement: bestPlan.placement,
-        forbiddenSeats: bestPlan.forbiddenSeats,
-        score: bestPlan.score,
-      },
-      error,
+    const emitter = (event: string, data: any) => {
+      this.server.emit(event, data);
     };
 
-    this.server.emit('done', result);
+    this.gaService.startGenerating(
+      plans,
+      nbGenerations,
+      survivorProportion,
+      nbReproductions,
+      probaMutation,
+      emitter,
+    );
   }
 }

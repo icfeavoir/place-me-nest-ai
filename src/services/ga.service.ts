@@ -18,6 +18,89 @@ export class GAService {
     return plans.slice(0, toKeep);
   }
 
+  private sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /**
+   * Main function
+   * Boucle sur le nb de générations
+   */
+  async startGenerating(
+    plans: Plan[],
+    nbGenerations: number,
+    survivorProportion: number,
+    nbReproductions: number,
+    probaMutation: number,
+    emit: (event: string, data: any) => void,
+  ) {
+    // mesure time
+    const begin = new Date();
+    let bestPlan = plans[0];
+    let error = null;
+    // Mesure convergence
+    const genOfBestPlan = { generation: 0, score: 0 };
+
+    try {
+      const genArray = Array.from({ length: nbGenerations }, (v, i) => i);
+      for (const i of genArray) {
+        plans = this.reproduce(
+          plans,
+          survivorProportion,
+          nbReproductions,
+          probaMutation,
+        );
+        bestPlan = plans[0];
+
+        if (bestPlan.score > genOfBestPlan.score) {
+          genOfBestPlan.generation = i;
+          genOfBestPlan.score = bestPlan.score;
+        }
+
+        emit('loading', { current: i, total: nbGenerations });
+
+        // emit toutes les 10 gen
+        if (i % 10 === 0) {
+          const currentGen = {
+            genOfBestPlan,
+            bestPlan: {
+              gridSize: bestPlan.gridSize,
+              placement: bestPlan.placement,
+              forbiddenSeats: bestPlan.forbiddenSeats,
+              score: bestPlan.score,
+            },
+          };
+          emit('current-gen', currentGen);
+        }
+
+        // Sleep 0 to let time to send socket
+        await this.sleep(0);
+      }
+    } catch (e) {
+      console.error(e);
+      error = e.message;
+    }
+
+    const end = new Date();
+    const timeInSeconds = (end.getTime() - begin.getTime()) / 1000;
+
+    const result = {
+      genOfBestPlan,
+      averageScore: plans.reduce(
+        (avg, value, _, { length }) => avg + value?.score / length,
+        0,
+      ),
+      time: timeInSeconds,
+      bestPlan: {
+        gridSize: bestPlan.gridSize,
+        placement: bestPlan.placement,
+        forbiddenSeats: bestPlan.forbiddenSeats,
+        score: bestPlan.score,
+      },
+      error,
+    };
+
+    emit('done', result);
+  }
+
   /**
    * Technique de sélection de plan.
    * Chaque plan de la liste peut être choisi, mais plus son score est bon,
