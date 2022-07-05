@@ -102,35 +102,6 @@ export class GAService {
   }
 
   /**
-   * Technique de sélection de plan.
-   * Chaque plan de la liste peut être choisi, mais plus son score est bon,
-   * plus sa prob d'être choisie est grande.
-   */
-  private rouletteWheelSelection(plans: Plan[]): Plan {
-    const sortedPlans = this.sortPlans(plans);
-
-    // par défaut, on choisit le premier plan
-    let selectedPlan: Plan = sortedPlans[0];
-
-    const sumScore = sortedPlans.reduce((acc, plan) => acc + plan.score, 0);
-    const choosedScore = Math.floor(Math.random() * sumScore);
-
-    let scoreCounter = 0;
-    sortedPlans.every((plan) => {
-      scoreCounter += plan.score;
-      // retourne une copie
-      if (scoreCounter >= choosedScore) {
-        selectedPlan = plan;
-        // every doit retourner false pour arrêter la boucle
-        return false;
-      }
-      return true;
-    });
-
-    return selectedPlan;
-  }
-
-  /**
    * Création de la première population
    */
   initializePopulation(
@@ -190,6 +161,35 @@ export class GAService {
     const nextPlansGeneration = this.sortPlans([...survivors, ...newPlans]);
 
     return nextPlansGeneration;
+  }
+
+  /**
+   * Technique de sélection de plan.
+   * Chaque plan de la liste peut être choisi, mais plus son score est bon,
+   * plus sa prob d'être choisie est grande.
+   */
+  private rouletteWheelSelection(plans: Plan[]): Plan {
+    const sortedPlans = this.sortPlans(plans);
+
+    // par défaut, on choisit le premier plan
+    let selectedPlan: Plan = sortedPlans[0];
+
+    const sumScore = sortedPlans.reduce((acc, plan) => acc + plan.score, 0);
+    const choosedScore = Math.floor(Math.random() * sumScore);
+
+    let scoreCounter = 0;
+    sortedPlans.every((plan) => {
+      scoreCounter += plan.score;
+      // retourne une copie
+      if (scoreCounter >= choosedScore) {
+        selectedPlan = plan;
+        // every doit retourner false pour arrêter la boucle
+        return false;
+      }
+      return true;
+    });
+
+    return selectedPlan;
   }
 
   /**

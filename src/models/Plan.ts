@@ -173,6 +173,7 @@ export class Plan {
     // random line and col
     let line = Math.floor(Math.random() * this._gridSize.height);
     let col = Math.floor(Math.random() * this._gridSize.width);
+    let direction: 1 | -1 = Math.random() > 0.5 ? -1 : 1;
 
     missingGroups.forEach((group) => {
       let remainingGroupMembers = group.nb;
@@ -202,11 +203,16 @@ export class Plan {
           }
         }
 
-        // On décale la colonne
-        col++;
-        // si on dépasse, on décale la ligne
-        if (col >= this._gridSize.width) {
-          col = 0;
+        // On décale la colonne dans 1 direction
+        col += direction;
+        // si on dépasse, on décale la ligne et on change de direction
+        const goToLine =
+          direction === 1 ? col >= this._gridSize.width : col < 0;
+
+        if (goToLine) {
+          direction *= -1;
+          // on remet col à 0 ou au bout selon la direciton
+          col = direction === 1 ? 0 : this._gridSize.width - 1;
           line++;
         }
 
