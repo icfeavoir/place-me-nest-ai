@@ -15,6 +15,7 @@ export class GAService {
   }
 
   keepOnly(plans: Plan[], toKeep: number) {
+    if (toKeep < 1) toKeep = 1;
     return plans.slice(0, toKeep);
   }
 
