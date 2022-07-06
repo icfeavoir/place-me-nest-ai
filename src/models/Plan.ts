@@ -10,6 +10,8 @@ import { Group } from './Group';
 export class Plan {
   private _placement: GroupMemberType[];
   private _score: number;
+  // map groupName => score
+  private _groupScore: Map<string, number>;
 
   private _gridSize: GridSizeType;
   private _groups: Group[];
@@ -32,6 +34,7 @@ export class Plan {
 
     this._placement = [];
     this._score = 0;
+    this._groupScore = new Map();
 
     this.calculateScore();
   }
@@ -64,10 +67,18 @@ export class Plan {
     return this._forbiddenSeats;
   }
 
+  /**
+   * Retourne le groupMember pour un seat donné
+   * @param seat
+   * @returns
+   */
   getGroupMemberAt(seat: SeatType): GroupMemberType | null {
-    return this._placement.find(
-      ({ seat: groupMemberSeat }) =>
-        groupMemberSeat.line === seat.line && groupMemberSeat.col === seat.col,
+    return (
+      this._placement.find(
+        ({ seat: groupMemberSeat }) =>
+          groupMemberSeat.line === seat.line &&
+          groupMemberSeat.col === seat.col,
+      ) ?? null
     );
   }
 
@@ -83,6 +94,10 @@ export class Plan {
 
   isSeatAvailable(seat: SeatType): boolean {
     return this.getGroupMemberAt(seat) === null;
+  }
+
+  areAllSeatsAvailable(seats: SeatType[]): boolean {
+    return seats.every(this.isSeatAvailable.bind(this));
   }
 
   isSeatTaken(seat: SeatType): boolean {
@@ -225,6 +240,16 @@ export class Plan {
   }
 
   /**
+   * Ajoute un score à un groupe
+   * @param groupName
+   * @param nb
+   */
+  private addScoreToGroupName(groupName: string, nb: number) {
+    const currentGroupScore = this._groupScore.get(groupName) ?? 0;
+    this._groupScore.set(groupName, currentGroupScore + nb);
+  }
+
+  /**
    * Calcule le score du plan
    */
   calculateScore() {
@@ -235,6 +260,13 @@ export class Plan {
     const MALUS = this._scorePoints.malusScore ?? -100;
 
     this._placement.forEach((groupMember) => {
+      const currentGroupName = groupMember?.groupName;
+
+      // init groupScore
+      if (!this._groupScore.has(currentGroupName)) {
+        this._groupScore.set(currentGroupName, 0);
+      }
+
       const line = groupMember.seat.line ?? null;
       const col = groupMember.seat.col ?? null;
 
@@ -246,27 +278,32 @@ export class Plan {
 
         let isAlone = true;
 
-        if (groupMemberRight?.groupName === groupMember.groupName) {
+        if (groupMemberRight?.groupName === currentGroupName) {
           currentScore += LEFT_RIGHT;
+          this.addScoreToGroupName(currentGroupName, LEFT_RIGHT);
           isAlone = false;
         }
 
-        if (groupMemberLeft?.groupName === groupMember.groupName) {
+        if (groupMemberLeft?.groupName === currentGroupName) {
           currentScore += LEFT_RIGHT;
+          this.addScoreToGroupName(currentGroupName, LEFT_RIGHT);
           isAlone = false;
         }
 
-        if (groupMemberTop?.groupName === groupMember.groupName) {
+        if (groupMemberTop?.groupName === currentGroupName) {
           currentScore += TOP_BOTTOM;
+          this.addScoreToGroupName(currentGroupName, TOP_BOTTOM);
         }
 
-        if (groupMemberBot?.groupName === groupMember.groupName) {
+        if (groupMemberBot?.groupName === currentGroupName) {
           currentScore += TOP_BOTTOM;
+          this.addScoreToGroupName(currentGroupName, TOP_BOTTOM);
         }
 
         // Si groupMember seul alors qu'il ne devrait pas => MALUS
         if (isAlone && groupMember.groupNb > 1) {
           currentScore += MALUS;
+          this.addScoreToGroupName(currentGroupName, MALUS);
         }
 
         // Si groupMember a une contrainte non respectée => MALUS
@@ -343,14 +380,75 @@ export class Plan {
     let remainingGroups = [...groups];
 
     groups.forEach((group) => {
-      // probabilité d'hériter du père (sinon aléatoire)
-      const fatherInheritanceForGroup = Math.random() < 0.5;
+      const currentGroupName = group.name;
+      // on prend le group du père
+      const fatherGroupScore = father._groupScore.get(currentGroupName);
+      const keepIt = Math.random() > 0.15;
 
-      if (fatherInheritanceForGroup) {
+      if (fatherGroupScore > 0 && keepIt) {
         const seats: SeatType[] = father.getGroupSeats(group);
         childPlan.setGroupSeats(group, seats);
         remainingGroups = remainingGroups.filter((g) => g !== group);
-        // change parent turn if success
+      }
+    });
+
+    // put groups that have not been placed
+    childPlan.fillMissingGroups(remainingGroups);
+
+    childPlan.calculateScore();
+
+    return childPlan;
+  }
+
+  /**
+   * Création d'un plan à partir de 2 parents
+   * @param father
+   * @param mother
+   * @returns {Plan} le nouveau plan
+   */
+  static createFromParents(father: Plan, mother: Plan): Plan {
+    const gridSize = {
+      width: father.width,
+      height: father.height,
+    };
+    const childPlan = new Plan(
+      gridSize,
+      father._groups,
+      father._forbiddenSeats,
+      father._constraints,
+      father._scorePoints,
+    );
+
+    const groups = [...father._groups];
+    let remainingGroups = [...groups];
+
+    groups.forEach((group) => {
+      const currentGroupName = group.name;
+      // on prend le group qui donne le meilleur score
+      const fatherGroupScore = father._groupScore.get(currentGroupName);
+      const motherGroupScore = mother._groupScore.get(currentGroupName);
+
+      const choosedParent =
+        fatherGroupScore > motherGroupScore ? father : mother;
+      const otherParent = fatherGroupScore > motherGroupScore ? mother : father;
+
+      let seats: SeatType[] = choosedParent.getGroupSeats(group);
+
+      // on vérifie que tous les sièges sont dispos
+      let areAllSeatsAvailable = childPlan.areAllSeatsAvailable(seats);
+      if (!areAllSeatsAvailable) {
+        seats = otherParent.getGroupSeats(group);
+        areAllSeatsAvailable = childPlan.areAllSeatsAvailable(seats);
+      }
+
+      // si les deux groupScore sont négatifs (peu importe celui choisi), on ne prend pas
+      if (fatherGroupScore < 0 && motherGroupScore < 0) {
+        areAllSeatsAvailable = false;
+      }
+
+      if (areAllSeatsAvailable) {
+        childPlan.setGroupSeats(group, seats);
+        remainingGroups = remainingGroups.filter((g) => g !== group);
       }
     });
 

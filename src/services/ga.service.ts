@@ -144,18 +144,20 @@ export class GAService {
     const newPlans = [];
     for (let i = 0; i < nbReproductions; i++) {
       const father = this.rouletteWheelSelection(survivors)?.clone();
+      const mother = this.rouletteWheelSelection(survivors)?.clone();
 
-      if (father) {
+      if (father && mother) {
         const child = Plan.createFromOneParent(father);
+        // const child = Plan.createFromParents(father, mother);
 
         const willMutate = Math.random() < probMutation / 100;
         if (willMutate) {
           // on mute et on ajoute à la population => 2 nouveaux plans
           const mutatedChild = this.mutate(child);
           if (mutatedChild) newPlans.push(mutatedChild);
+        } else {
+          newPlans.push(child);
         }
-
-        newPlans.push(child);
       }
     }
     // après toutes les reproductions, on ajoute les plans existants à la population
