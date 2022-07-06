@@ -359,6 +359,18 @@ export class Plan {
   }
 
   /**
+   * Calcule le score idéal pour un groupe donné
+   * @param group
+   */
+  private idealScoreForGroup(group: Group): number {
+    /**
+     * au minimum, tous doivent être dans la même colonne
+     * Donc chacun doit donner 2 * TOP_BOTTOM (sauf le premier et le dernier => -1)
+     */
+    return 2 * (group.nb - 1) * this._scorePoints.topBottomScore;
+  }
+
+  /**
    * Création d'un plan à partir d'un seul parent
    * @param father
    * @returns
@@ -383,9 +395,10 @@ export class Plan {
       const currentGroupName = group.name;
       // on prend le group du père
       const fatherGroupScore = father._groupScore.get(currentGroupName);
-      const keepIt = Math.random() > 0.15;
+      const idealScoreForGroup = father.idealScoreForGroup(group);
+      const keepIt = Math.random() < 0.15;
 
-      if (fatherGroupScore > 0 && keepIt) {
+      if (fatherGroupScore > idealScoreForGroup && keepIt) {
         const seats: SeatType[] = father.getGroupSeats(group);
         childPlan.setGroupSeats(group, seats);
         remainingGroups = remainingGroups.filter((g) => g !== group);
@@ -458,5 +471,30 @@ export class Plan {
     childPlan.calculateScore();
 
     return childPlan;
+  }
+
+  private toString(): string {
+    const lineOrder = this._placement.sort(
+      (a: GroupMemberType, b: GroupMemberType) => {
+        if (a.seat.line === b.seat.line) {
+          // égalité, on est sur la même ligne
+          return a.seat.col - b.seat.col;
+        } else {
+          return a.seat.line - b.seat.line;
+        }
+      },
+    );
+
+    let str = '';
+    let prevLine = 0;
+    lineOrder.forEach((group) => {
+      if (group.seat.line !== prevLine) {
+        prevLine = group.seat.line;
+        str += '\n';
+      }
+      str += `|${group.groupName} (${group.groupNb})`;
+    });
+
+    return str;
   }
 }
