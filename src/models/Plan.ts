@@ -267,58 +267,56 @@ export class Plan {
         this._groupScore.set(currentGroupName, 0);
       }
 
-      const line = groupMember.seat.line ?? null;
-      const col = groupMember.seat.col ?? null;
+      const line = groupMember.seat.line;
+      const col = groupMember.seat.col;
 
-      if (line && col) {
-        const groupMemberRight = this.getGroupMemberAt({ line, col: col + 1 });
-        const groupMemberLeft = this.getGroupMemberAt({ line, col: col - 1 });
-        const groupMemberTop = this.getGroupMemberAt({ line: line + 1, col });
-        const groupMemberBot = this.getGroupMemberAt({ line: line - 1, col });
+      const groupMemberRight = this.getGroupMemberAt({ line, col: col + 1 });
+      const groupMemberLeft = this.getGroupMemberAt({ line, col: col - 1 });
+      const groupMemberTop = this.getGroupMemberAt({ line: line + 1, col });
+      const groupMemberBot = this.getGroupMemberAt({ line: line - 1, col });
 
-        let isAlone = true;
+      let isAlone = true;
 
-        if (groupMemberRight?.groupName === currentGroupName) {
-          currentScore += LEFT_RIGHT;
-          this.addScoreToGroupName(currentGroupName, LEFT_RIGHT);
-          isAlone = false;
-        }
+      if (groupMemberRight?.groupName === currentGroupName) {
+        currentScore += LEFT_RIGHT;
+        this.addScoreToGroupName(currentGroupName, LEFT_RIGHT);
+        isAlone = false;
+      }
 
-        if (groupMemberLeft?.groupName === currentGroupName) {
-          currentScore += LEFT_RIGHT;
-          this.addScoreToGroupName(currentGroupName, LEFT_RIGHT);
-          isAlone = false;
-        }
+      if (groupMemberLeft?.groupName === currentGroupName) {
+        currentScore += LEFT_RIGHT;
+        this.addScoreToGroupName(currentGroupName, LEFT_RIGHT);
+        isAlone = false;
+      }
 
-        if (groupMemberTop?.groupName === currentGroupName) {
-          currentScore += TOP_BOTTOM;
-          this.addScoreToGroupName(currentGroupName, TOP_BOTTOM);
-        }
+      if (groupMemberTop?.groupName === currentGroupName) {
+        currentScore += TOP_BOTTOM;
+        this.addScoreToGroupName(currentGroupName, TOP_BOTTOM);
+      }
 
-        if (groupMemberBot?.groupName === currentGroupName) {
-          currentScore += TOP_BOTTOM;
-          this.addScoreToGroupName(currentGroupName, TOP_BOTTOM);
-        }
+      if (groupMemberBot?.groupName === currentGroupName) {
+        currentScore += TOP_BOTTOM;
+        this.addScoreToGroupName(currentGroupName, TOP_BOTTOM);
+      }
 
-        // Si groupMember seul alors qu'il ne devrait pas => MALUS
-        if (isAlone && groupMember.groupNb > 1) {
+      // Si groupMember seul alors qu'il ne devrait pas => MALUS
+      if (isAlone && groupMember.groupNb > 1) {
+        currentScore += MALUS;
+        this.addScoreToGroupName(currentGroupName, MALUS);
+      }
+
+      // Si groupMember a une contrainte non respectée => MALUS
+      if (groupMember?.constraintName) {
+        const seats = this._constraints.find(
+          (c) => c.name === groupMember.constraintName,
+        )?.seats;
+        if (
+          !seats?.find(
+            ({ line: constraintLine, col: constraintCol }) =>
+              line === constraintLine && col === constraintCol,
+          )
+        ) {
           currentScore += MALUS;
-          this.addScoreToGroupName(currentGroupName, MALUS);
-        }
-
-        // Si groupMember a une contrainte non respectée => MALUS
-        if (groupMember?.constraintName) {
-          const seats = this._constraints.find(
-            (c) => c.name === groupMember.constraintName,
-          )?.seats;
-          if (
-            !seats?.find(
-              ({ line: constraintLine, col: constraintCol }) =>
-                line === constraintLine && col === constraintCol,
-            )
-          ) {
-            currentScore += MALUS;
-          }
         }
       }
     });
