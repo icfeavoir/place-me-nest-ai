@@ -147,8 +147,8 @@ export class GAService {
       const mother = this.rouletteWheelSelection(survivors)?.clone();
 
       if (father && mother) {
-        const child = Plan.createFromOneParent(father);
-        // const child = Plan.createFromParents(father, mother);
+        // const child = Plan.createFromOneParent(father);
+        const child = Plan.createFromParents(father, mother);
 
         const willMutate = Math.random() < probMutation / 100;
         if (willMutate) {

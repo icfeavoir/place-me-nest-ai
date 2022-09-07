@@ -369,6 +369,19 @@ export class Plan {
   }
 
   /**
+   * Calcul le score max d'un plan
+   */
+  private maxScoreForPlan(): number {
+    /**
+     * tous doivent être dans la même ligne
+     * Donc chacun doit donner 2 * LEFT_RIGHT (sauf le premier et le dernier => -1)
+     */
+    return this.groups.reduce((sum: number, currentGroup: Group) => {
+      return sum + 2 * (currentGroup.nb - 1) * this._scorePoints.leftRightScore;
+    }, 0);
+  }
+
+  /**
    * Création d'un plan à partir d'un seul parent
    * @param father
    * @returns
@@ -391,7 +404,7 @@ export class Plan {
 
     groups.forEach((group) => {
       const currentGroupName = group.name;
-      // on prend le group du père
+      // on prend le groupe
       const fatherGroupScore = father._groupScore.get(currentGroupName);
       const idealScoreForGroup = father.idealScoreForGroup(group);
       const keepIt = Math.random() < 0.15;
